@@ -1,1 +1,2 @@
-SELECT * FROM users;
+Delete from users;
+DELETE from transactions;

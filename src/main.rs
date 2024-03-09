@@ -29,20 +29,46 @@ impl UserBase {
         st.next()?;
         Ok(())
     }
+    pub fn pay(&self, u_from: &str, u_to: &str, amount: i64) -> Result<(), UBaseErr> {
+        let conn = sqlite::open(&self.fname)?;
+        let mut st = conn.prepare(
+            "insert into transactions (u_from, u_to, t_date,
+        t_amount) values(?,?,datetime(\"now\"),?);",
+        )?;
+        st.bind(1, u_from)?;
+        st.bind(2, u_to)?;
+        st.bind(3, amount)?;
+        st.next()?;
+        Ok(())
+    }
 }
-pub fn pay(&self, u_from: &str, u_to: &str, amount: i64) -> Result<(), UBaseErr> {
-    let conn = sqlite::open(&self.fname)?;
-    let mut st = conn.prepare(
-        "insert into transactions (u_from, u_to, t_date,
-    t_amount) values(?,?,datetime(\"now\"),?);",
-    )?;
-    st.bind(1, u_from)?;
-    st.bind(2, u_to)?;
-    st.bind(3, amount)?;
-    st.next()?;
-    Ok(())
-}
+
+
 
 pub struct UserBase {
     fname: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_user_test() {
+        let db_path = "data/users.db";
+        let user_base = UserBase { fname: db_path.to_string() };
+
+        let res = user_base.add_user("new_user", "new_pass");
+        assert!(res.is_ok());
+
+    }
+
+    #[test]
+    fn pay_test(){
+        let db_path = "data/users.db";
+        let user_base = UserBase { fname: db_path.to_string() };
+        let res = user_base.pay("A", "B", 100);
+        assert!(res.is_ok());
+
+    }
 }

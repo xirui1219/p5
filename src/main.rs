@@ -1,5 +1,6 @@
 use bcrypt::{hash, verify, BcryptError, DEFAULT_COST};
 use sqlite::Error as SqErr;
+
 #[derive(Debug)]
 pub enum UBaseErr {
     DbErr(SqErr),
@@ -52,6 +53,8 @@ pub struct UserBase {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sqlite::{Connection, Result, State};
+    use chrono::prelude::*;
 
     #[test]
     fn add_user_test() {
@@ -59,8 +62,19 @@ mod tests {
         let user_base = UserBase { fname: db_path.to_string() };
 
         let res = user_base.add_user("new_user", "new_pass");
-        assert!(res.is_ok());
+        let conn = sqlite::open(db_path).expect("Failed to open database");
 
+        let mut st = conn.prepare(
+            "SELECT * FROM users;",
+        ).expect("fail query");
+
+        while let State::Row = st.next().unwrap() {
+            assert_eq!(st.read::<String>(0).unwrap(), "new_user");
+            assert!(!st.read::<String>(1).unwrap().is_empty());
+        }
+    }
+    fn same_date(date1: NaiveDateTime, date2: NaiveDateTime) -> bool {    
+        date1.year() == date2.year() && date1.month() == date2.month() && date1.day() == date2.day()
     }
 
     #[test]
@@ -68,7 +82,25 @@ mod tests {
         let db_path = "data/users.db";
         let user_base = UserBase { fname: db_path.to_string() };
         let res = user_base.pay("A", "B", 100);
-        assert!(res.is_ok());
+        let conn = sqlite::open(db_path).expect("Failed to open database");
 
+        let mut st = conn.prepare(
+            "SELECT * FROM transactions;",
+        ).expect("fail query");
+
+        while let State::Row = st.next().unwrap() {
+            assert_eq!(st.read::<String>(0).unwrap(), "A");
+            assert_eq!(st.read::<String>(1).unwrap(), "B");
+            let date_str= st.read::<String>(2).unwrap();
+            let db_datetime = NaiveDateTime::parse_from_str(&date_str,  "%Y-%m-%d %H:%M:%S")
+                .expect("date conversion error");
+
+            let utc_datetime: DateTime<Utc> = Utc::now();
+            let cur_datetime: NaiveDateTime = utc_datetime.naive_utc();
+
+            assert!(same_date(cur_datetime, db_datetime));
+            assert_eq!(st.read::<i64>(3).unwrap(), 100);
+           
+        }
     }
 }

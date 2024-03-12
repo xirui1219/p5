@@ -1,6 +1,6 @@
 use bcrypt::{hash, verify, BcryptError, DEFAULT_COST};
 use sqlite::Error as SqErr;
-
+use serial_test::serial;
 #[derive(Debug)]
 pub enum UBaseErr {
     DbErr(SqErr),
@@ -57,6 +57,7 @@ mod tests {
     use chrono::prelude::*;
 
     #[test]
+    #[serial]
     fn add_user_test() {
         let db_path = "data/users.db";
         let user_base = UserBase { fname: db_path.to_string() };
@@ -70,7 +71,9 @@ mod tests {
 
         while let State::Row = st.next().unwrap() {
             assert_eq!(st.read::<String>(0).unwrap(), "new_user");
-            assert!(!st.read::<String>(1).unwrap().is_empty());
+            let pass = st.read::<String>(1).unwrap();
+            assert!(verify("new_pass",&pass).unwrap());
+           // assert!(!st.read::<String>(1).unwrap().is_empty());
         }
     }
     fn same_date(date1: NaiveDateTime, date2: NaiveDateTime) -> bool {    
@@ -78,6 +81,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn pay_test(){
         let db_path = "data/users.db";
         let user_base = UserBase { fname: db_path.to_string() };
@@ -100,7 +104,6 @@ mod tests {
 
             assert!(same_date(cur_datetime, db_datetime));
             assert_eq!(st.read::<i64>(3).unwrap(), 100);
-           
         }
     }
 }
